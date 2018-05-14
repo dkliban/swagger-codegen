@@ -2044,6 +2044,7 @@ public class DefaultCodegen {
                 operationId = operationId.substring(offset+1);
             }
         }
+    	boolean pathParamSet = false;
         operationId = removeNonNameElementToCamelCase(operationId);
         op.path = path;
         op.operationId = toOperationId(operationId);
@@ -2242,13 +2243,23 @@ public class DefaultCodegen {
                     }
                 }
 
-                allParams.add(p);
+                if (!(param instanceof PathParameter)) {
+                	allParams.add(p);
+                } else if (!pathParamSet) {
+                	p.baseName = "href";
+                	p.dataFormat = "relative URL";
+                	p.description = "A relative URI for the resource.";
+                	p.unescapedDescription = "A relative URI for the resource.";
+                	p.paramName = "href";
+                	allParams.add(p);
+                }
                 // Issue #2561 (neilotoole) : Moved setting of is<Type>Param flags
                 // from here to fromParameter().
                 if (param instanceof QueryParameter) {
                     queryParams.add(p.copy());
-                } else if (param instanceof PathParameter) {
+                } else if ((param instanceof PathParameter) && (!pathParamSet)) {
                     pathParams.add(p.copy());
+                	pathParamSet = true;
                 } else if (param instanceof HeaderParameter) {
                     headerParams.add(p.copy());
                 } else if (param instanceof CookieParameter) {
@@ -2263,7 +2274,7 @@ public class DefaultCodegen {
                     formParams.add(p.copy());
                 }
 
-                if (p.required) { //required parameters
+                if ((p.required) && !(param instanceof PathParameter)){ //required parameters
                     requiredParams.add(p.copy());
                 } else { // optional parameters
                     op.hasOptionalParams = true;
@@ -2317,6 +2328,9 @@ public class DefaultCodegen {
         op.isRestfulDestroy = op.isRestfulDestroy();
         op.isRestful = op.isRestful();
 
+        if (pathParamSet) {
+        	op.path = "{href}";
+        }
         return op;
     }
 
